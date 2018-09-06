@@ -399,13 +399,27 @@ func (net UbuntuNetManager) detectMacAddresses() (map[string]string, error) {
 	for _, filePath := range filePaths {
 		isPhysicalDevice := net.fs.FileExists(path.Join(filePath, "device"))
 
-		if isPhysicalDevice {
+		addrAssignType, err := net.fs.ReadFileString(path.Join(filePath, "addr_assign_type"))
+		if err != nil {
+			return addresses, bosherr.WrapError(err, "Reading address assign type from file")
+		}
+		addrAssignType = strings.Trim(addrAssignType, "\n")
+		// addr_assign_type == "3" indicates the address is set using dev_set_mac_address
+		isMacAddressSet := addrAssignType == "3"
+
+		// If a virtual device's mac address is set using dev_set_mac_address, it's created to take the role of a
+		// physical device which might be moved to another netns as a bridge interface
+		if isPhysicalDevice || isMacAddressSet {
 			macAddress, err = net.fs.ReadFileString(path.Join(filePath, "address"))
 			if err != nil {
 				return addresses, bosherr.WrapError(err, "Reading mac address from file")
 			}
 
 			macAddress = strings.Trim(macAddress, "\n")
+			if _, ok := addresses[macAddress]; ok && !isPhysicalDevice {
+				// Physical device should be preferred if devices with same mac address are found
+				continue
+			}
 
 			interfaceName := path.Base(filePath)
 			addresses[macAddress] = interfaceName
