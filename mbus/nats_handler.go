@@ -163,7 +163,16 @@ func (h *natsHandler) Send(target boshhandler.Target, topic boshhandler.Topic, m
 	settings := h.settingsService.GetSettings()
 
 	subject := fmt.Sprintf("%s.agent.%s.%s", target, topic, settings.AgentID)
-	return h.client.Publish(subject, bytes)
+
+	publishRetryable := boshretry.NewRetryable(func() (bool, error) {
+		err := h.client.Publish(subject, bytes)
+		if err != nil {
+			return true, bosherr.WrapError(err, "Publishing to NATS")
+		}
+		return false, nil
+	})
+	attemptRetryStrategy := boshretry.NewAttemptRetryStrategy(3, time.Second, publishRetryable, h.logger)
+	return attemptRetryStrategy.Try()
 }
 
 func (h *natsHandler) Stop() {
