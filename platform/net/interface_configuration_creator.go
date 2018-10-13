@@ -10,6 +10,11 @@ import (
 	boshsys "github.com/cloudfoundry/bosh-utils/system"
 )
 
+type Device struct {
+	Name string
+	IsPhysical bool
+}
+
 type StaticInterfaceConfiguration struct {
 	Name                string
 	Address             string
@@ -157,7 +162,7 @@ func (creator interfaceConfigurationCreator) createInterfaceConfiguration(static
 	return staticConfigs, dhcpConfigs, nil
 }
 
-func (creator interfaceConfigurationCreator) CreateInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]string) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
+func (creator interfaceConfigurationCreator) CreateInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]Device) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
 	// In cases where we only have one network and it has no MAC address (either because the IAAS doesn't give us one or
 	// it's an old CPI), if we only have one interface, we should map them
 	if len(networks) == 1 && len(interfacesByMAC) == 1 {
@@ -172,7 +177,7 @@ func (creator interfaceConfigurationCreator) CreateInterfaceConfigurations(netwo
 	return creator.createMultipleInterfaceConfigurations(networks, interfacesByMAC)
 }
 
-func (creator interfaceConfigurationCreator) createMultipleInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]string) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
+func (creator interfaceConfigurationCreator) createMultipleInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]Device) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
 	if !networks.HasInterfaceAlias() && len(interfacesByMAC) < len(networks) {
 		return nil, nil, bosherr.Errorf("Number of network settings '%d' is greater than the number of network devices '%d'", len(networks), len(interfacesByMAC))
 	}
@@ -186,17 +191,20 @@ func (creator interfaceConfigurationCreator) createMultipleInterfaceConfiguratio
 	}
 
 	// Configure interfaces with network settings matching MAC address.
-	// If we cannot find a network setting with a matching MAC address, configure that interface as DHCP
+	// If we cannot find a network setting with a matching MAC address for a physical interface, configure that interface as DHCP
 	var networkSettings boshsettings.Network
 	var err error
 	staticConfigs := []StaticInterfaceConfiguration{}
 	dhcpConfigs := []DHCPInterfaceConfiguration{}
 
-	for mac, ifaceName := range interfacesByMAC {
-		networkSettings, _ = networks.NetworkForMac(mac)
-		staticConfigs, dhcpConfigs, err = creator.createInterfaceConfiguration(staticConfigs, dhcpConfigs, ifaceName, networkSettings)
-		if err != nil {
-			return nil, nil, bosherr.WrapError(err, "Creating interface configuration")
+	for mac, device := range interfacesByMAC {
+		networkSettings, found = networks.NetworkForMac(mac)
+		// Create interface configuration for the interace if there
+		if found || device.IsPhysical {
+			staticConfigs, dhcpConfigs, err = creator.createInterfaceConfiguration(staticConfigs, dhcpConfigs, device.name, networkSettings)
+			if err != nil {
+				return nil, nil, bosherr.WrapError(err, "Creating interface configuration")
+			}
 		}
 	}
 
@@ -224,7 +232,7 @@ func (creator interfaceConfigurationCreator) getFirstNetwork(networks boshsettin
 
 func (creator interfaceConfigurationCreator) getFirstInterface(interfacesByMAC map[string]string) (string, string) {
 	for mac := range interfacesByMAC {
-		return mac, interfacesByMAC[mac]
+		return mac, interfacesByMAC[mac].name
 	}
 	return "", ""
 }

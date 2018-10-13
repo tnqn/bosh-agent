@@ -5,6 +5,7 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -387,8 +388,8 @@ iface {{ .Name }} inet{{ .Version6 }} static
 accept_ra 1{{ end }}{{ if .DNSServers }}
 dns-nameservers{{ range .DNSServers }} {{ . }}{{ end }}{{ end }}`
 
-func (net UbuntuNetManager) detectMacAddresses() (map[string]string, error) {
-	addresses := map[string]string{}
+func (net UbuntuNetManager) detectMacAddresses() (map[string]Device, error) {
+	addresses := map[string]Device{}
 
 	filePaths, err := net.fs.Glob("/sys/class/net/*")
 	if err != nil {
@@ -397,9 +398,21 @@ func (net UbuntuNetManager) detectMacAddresses() (map[string]string, error) {
 
 	var macAddress string
 	for _, filePath := range filePaths {
-		isPhysicalDevice := net.fs.FileExists(path.Join(filePath, "device"))
+		flags, err = net.fs.ReadFileString(path.Join(filePath, "flags"))
+		if err != nil {
+			return addresses, bosherr.WrapError(err, "Reading flags from file")
+		}
 
-		if isPhysicalDevice {
+		flags, err = strconv.ParseInt(flags, 0, 64)
+		if err != nil {
+			return addresses, bosherr.WrapError(err, "Parsing flags")
+		}
+		// 0x8 means it's a loopback interface
+		isLoopbackDeivce := flags & 0x8 == 0x8
+
+		if !isLoopbackDeivce {
+			isPhysicalDevice := net.fs.FileExists(path.Join(filePath, "device"))
+
 			macAddress, err = net.fs.ReadFileString(path.Join(filePath, "address"))
 			if err != nil {
 				return addresses, bosherr.WrapError(err, "Reading mac address from file")
@@ -408,7 +421,8 @@ func (net UbuntuNetManager) detectMacAddresses() (map[string]string, error) {
 			macAddress = strings.Trim(macAddress, "\n")
 
 			interfaceName := path.Base(filePath)
-			addresses[macAddress] = interfaceName
+
+			addresses[macAddress] = Device{name: interfaceName, isPhysical: isPhysicalDevice}
 		}
 	}
 
