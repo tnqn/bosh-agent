@@ -18,30 +18,37 @@ func NewMacAddressDetector(fs boshsys.FileSystem) MACAddressDetector {
 	}
 }
 
-func (d linuxMacAddressDetector) DetectMacAddresses() (map[string]string, error) {
-	addresses := map[string]string{}
+func (d linuxMacAddressDetector) DetectMacAddresses() (map[string]string, map[string]string, error) {
+	physicalDeviceAddresses := map[string]string{}
+	virtualDeviceAddresses := map[string]string{}
 
 	filePaths, err := d.fs.Glob("/sys/class/net/*")
 	if err != nil {
-		return addresses, bosherr.WrapError(err, "Getting file list from /sys/class/net")
+		return physicalDeviceAddresses, virtualDeviceAddresses, bosherr.WrapError(err, "Getting file list from /sys/class/net")
 	}
 
 	var macAddress string
 	for _, filePath := range filePaths {
 		isPhysicalDevice := d.fs.FileExists(path.Join(filePath, "device"))
 
+		macAddress, err = d.fs.ReadFileString(path.Join(filePath, "address"))
+		if err != nil {
+			return physicalDeviceAddresses, virtualDeviceAddresses, bosherr.WrapError(err, "Reading mac address from file")
+		}
+
+		macAddress = strings.Trim(macAddress, "\n")
+
+		interfaceName := path.Base(filePath)
+		// HACK
+		if interfaceName == "lo" {
+			continue
+		}
 		if isPhysicalDevice {
-			macAddress, err = d.fs.ReadFileString(path.Join(filePath, "address"))
-			if err != nil {
-				return addresses, bosherr.WrapError(err, "Reading mac address from file")
-			}
-
-			macAddress = strings.Trim(macAddress, "\n")
-
-			interfaceName := path.Base(filePath)
-			addresses[macAddress] = interfaceName
+			physicalDeviceAddresses[macAddress] = interfaceName
+		} else {
+			virtualDeviceAddresses[macAddress] = interfaceName
 		}
 	}
 
-	return addresses, nil
+	return physicalDeviceAddresses, virtualDeviceAddresses, nil
 }

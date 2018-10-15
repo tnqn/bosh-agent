@@ -109,16 +109,20 @@ func (net centosNetManager) SetupNetworking(networks boshsettings.Networks, errC
 func (net centosNetManager) GetConfiguredNetworkInterfaces() ([]string, error) {
 	interfaces := []string{}
 
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return interfaces, bosherr.WrapError(err, "Getting network interfaces")
 	}
 
-	for _, iface := range interfacesByMacAddress {
-		if net.fs.FileExists(ifcfgFilePath(iface)) {
-			interfaces = append(interfaces, iface)
+	getConfiguredInterfaces := func(interfacesByMacAddress map[string]string) {
+		for _, iface := range interfacesByMacAddress {
+			if net.fs.FileExists(ifcfgFilePath(iface)) {
+				interfaces = append(interfaces, iface)
+			}
 		}
 	}
+	getConfiguredInterfaces(physicalInterfacesByMacAddress)
+	getConfiguredInterfaces(virtualInterfacesByMacAddress)
 
 	return interfaces, nil
 }
@@ -214,12 +218,12 @@ func (net centosNetManager) writeNetworkInterfaces(dhcpInterfaceConfigurations [
 }
 
 func (net centosNetManager) buildInterfaces(networks boshsettings.Networks) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Getting network interfaces")
 	}
 
-	staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := net.interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMacAddress)
+	staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := net.interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, physicalInterfacesByMacAddress, virtualInterfacesByMacAddress)
 
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Creating interface configurations")

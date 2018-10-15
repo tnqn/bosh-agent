@@ -192,23 +192,27 @@ func (net UbuntuNetManager) writeNetConfigs(
 func (net UbuntuNetManager) GetConfiguredNetworkInterfaces() ([]string, error) {
 	interfaces := []string{}
 
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return interfaces, bosherr.WrapError(err, "Getting network interfaces")
 	}
 
-	for _, iface := range interfacesByMacAddress {
-		_, stderr, _, err := net.cmdRunner.RunCommand("ifup", "--no-act", iface)
-		if err != nil {
-			net.logger.Error(UbuntuNetManagerLogTag, "Ignoring failure to up interface: %s", err)
-		}
+	getConfiguredInterfaces := func(interfacesByMacAddress map[string]string) {
+		for _, iface := range interfacesByMacAddress {
+			_, stderr, _, err := net.cmdRunner.RunCommand("ifup", "--no-act", iface)
+			if err != nil {
+				net.logger.Error(UbuntuNetManagerLogTag, "Ignoring failure to up interface: %s", err)
+			}
 
-		re := regexp.MustCompile("[uU]nknown interface")
+			re := regexp.MustCompile("[uU]nknown interface")
 
-		if !re.MatchString(stderr) {
-			interfaces = append(interfaces, iface)
+			if !re.MatchString(stderr) {
+				interfaces = append(interfaces, iface)
+			}
 		}
 	}
+	getConfiguredInterfaces(physicalInterfacesByMacAddress)
+	getConfiguredInterfaces(virtualInterfacesByMacAddress)
 
 	return interfaces, nil
 }
@@ -222,35 +226,40 @@ func (net UbuntuNetManager) removeDhcpDNSConfiguration() error {
 		net.logger.Error(UbuntuNetManagerLogTag, "Ignoring failure calling 'pkill dhclient': %s", err)
 	}
 
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return err
 	}
 
-	for _, ifaceName := range interfacesByMacAddress {
-		// Explicitly delete the resolvconf record about given iface
-		// It seems to hold on to old dhclient records after dhcp configuration
-		// is removed from /etc/network/interfaces.
-		_, _, _, err = net.cmdRunner.RunCommand("resolvconf", "-d", ifaceName+".dhclient")
-		if err != nil {
-			net.logger.Error(UbuntuNetManagerLogTag, "Ignoring failure calling 'resolvconf -d %s.dhclient': %s", ifaceName, err)
+	deleteResolvconfRecords := func(interfacesByMacAddress map[string]string) {
+		for _, ifaceName := range interfacesByMacAddress {
+			// Explicitly delete the resolvconf record about given iface
+			// It seems to hold on to old dhclient records after dhcp configuration
+			// is removed from /etc/network/interfaces.
+			_, _, _, err = net.cmdRunner.RunCommand("resolvconf", "-d", ifaceName+".dhclient")
+			if err != nil {
+				net.logger.Error(UbuntuNetManagerLogTag, "Ignoring failure calling 'resolvconf -d %s.dhclient': %s", ifaceName, err)
+			}
 		}
 	}
+
+	deleteResolvconfRecords(physicalInterfacesByMacAddress)
+	deleteResolvconfRecords(virtualInterfacesByMacAddress)
 
 	return nil
 }
 
 func (net UbuntuNetManager) buildInterfaces(networks boshsettings.Networks) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Getting network interfaces")
 	}
 
-	// if len(interfacesByMacAddress) == 0 {
+	// if len(physicalInterfacesByMacAddress) == 0 {
 	// 	return nil, nil, bosherr.Error("No network interfaces found")
 	// }
 
-	staticConfigs, dhcpConfigs, err := net.interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMacAddress)
+	staticConfigs, dhcpConfigs, err := net.interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, physicalInterfacesByMacAddress, virtualInterfacesByMacAddress)
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Creating interface configurations")
 	}

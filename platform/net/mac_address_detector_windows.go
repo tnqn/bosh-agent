@@ -13,14 +13,14 @@ func NewMacAddressDetector(_ boshsys.FileSystem) MACAddressDetector {
 	return windowsMacAddressDetector{}
 }
 
-func (d windowsMacAddressDetector) DetectMacAddresses() (map[string]string, error) {
+func (d windowsMacAddressDetector) DetectMacAddresses() (map[string]string, map[string]string, error) {
 	ifs, err := gonet.Interfaces()
 	if err != nil {
-		return nil, bosherr.WrapError(err, "Detecting Mac Addresses")
+		return nil, nil, bosherr.WrapError(err, "Detecting Mac Addresses")
 	}
 	macs := make(map[string]string, len(ifs))
 	for _, f := range ifs {
 		macs[f.HardwareAddr.String()] = f.Name
 	}
-	return macs, nil
+	return macs, map[string]string{}, nil
 }

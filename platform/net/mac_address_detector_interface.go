@@ -1,5 +1,5 @@
 package net
 
 type MACAddressDetector interface {
-	DetectMacAddresses() (map[string]string, error)
+	DetectMacAddresses() (map[string]string, map[string]string, error)
 }

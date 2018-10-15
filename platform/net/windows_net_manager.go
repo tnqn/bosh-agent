@@ -204,13 +204,13 @@ func (net WindowsNetManager) buildInterfaces(networks boshsettings.Networks) (
 	error,
 ) {
 
-	interfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
+	physicalInterfacesByMacAddress, virtualInterfacesByMacAddress, err := net.macAddressDetector.DetectMacAddresses()
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Getting network interfaces")
 	}
 
 	staticConfigs, dhcpConfigs, err := net.interfaceConfigurationCreator.CreateInterfaceConfigurations(
-		networks, interfacesByMacAddress)
+		networks, physicalInterfacesByMacAddress, virtualInterfacesByMacAddress)
 	if err != nil {
 		return nil, nil, bosherr.WrapError(err, "Creating interface configurations")
 	}

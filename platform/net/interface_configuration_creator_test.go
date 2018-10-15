@@ -72,7 +72,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("creates an interface configuration when matching interface exists", func() {
-						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).ToNot(HaveOccurred())
 
 						Expect(staticInterfaceConfigurations).To(Equal([]StaticInterfaceConfiguration{
@@ -98,7 +98,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("retuns an error", func() {
-						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("No device found"))
 						Expect(err.Error()).To(ContainSubstring(staticNetwork.Mac))
@@ -118,7 +118,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("creates an interface configuration even with the MAC address from first interface with device", func() {
-						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 
 						Expect(err).ToNot(HaveOccurred())
 
@@ -145,7 +145,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("retuns an error", func() {
-						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("Number of network settings '1' is greater than the number of network devices '0'"))
 					})
@@ -160,7 +160,7 @@ func describeInterfaceConfigurationCreator() {
 				})
 
 				It("creates an interface configuration when matching interface exists", func() {
-					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(staticInterfaceConfigurations).To(Equal([]StaticInterfaceConfiguration{
@@ -199,7 +199,7 @@ func describeInterfaceConfigurationCreator() {
 				})
 
 				It("creates an interface configuration when matching interface exists", func() {
-					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(staticInterfaceConfigurations).To(Equal([]StaticInterfaceConfiguration{
@@ -245,7 +245,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("creates interface configurations for each network when matching interfaces exist", func() {
-						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).ToNot(HaveOccurred())
 
 						Expect(staticInterfaceConfigurations).To(ConsistOf([]StaticInterfaceConfiguration{
@@ -288,7 +288,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("creates interface configurations for each network when matching interfaces exist, and sets non-matching interfaces as DHCP", func() {
-						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).ToNot(HaveOccurred())
 
 						Expect(staticInterfaceConfigurations).To(BeEmpty())
@@ -313,7 +313,7 @@ func describeInterfaceConfigurationCreator() {
 					})
 
 					It("retuns an error", func() {
-						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+						_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 						Expect(err).To(HaveOccurred())
 					})
 				})
@@ -332,7 +332,7 @@ func describeInterfaceConfigurationCreator() {
 				})
 
 				It("creates interface configurations for each network when matching interfaces exist", func() {
-					staticInterfaceConfigurations, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+					staticInterfaceConfigurations, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(staticInterfaceConfigurations).To(ConsistOf([]StaticInterfaceConfiguration{
@@ -375,7 +375,7 @@ func describeInterfaceConfigurationCreator() {
 				})
 
 				It("creates interface configurations for each network when matching interfaces exist", func() {
-					staticInterfaceConfigurations, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+					staticInterfaceConfigurations, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(staticInterfaceConfigurations).To(ConsistOf([]StaticInterfaceConfiguration{
@@ -416,7 +416,7 @@ func describeInterfaceConfigurationCreator() {
 				})
 
 				It("creates interface configurations for each network when matching interfaces exist", func() {
-					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+					staticInterfaceConfigurations, dhcpInterfaceConfigurations, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(staticInterfaceConfigurations).To(ConsistOf([]StaticInterfaceConfiguration{
@@ -459,7 +459,7 @@ func describeInterfaceConfigurationCreator() {
 			})
 
 			It("retuns an error", func() {
-				_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC)
+				_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(networks, interfacesByMAC, map[string]string{})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -476,7 +476,7 @@ func describeInterfaceConfigurationCreator() {
 			"invalid-network-mac-address": "static-interface-name",
 		}
 
-		_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(boshsettings.Networks{"foo": invalidNetwork}, interfacesByMAC)
+		_, _, err := interfaceConfigurationCreator.CreateInterfaceConfigurations(boshsettings.Networks{"foo": invalidNetwork}, interfacesByMAC, map[string]string{})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("Invalid IP 'not an ip'"))
 	})

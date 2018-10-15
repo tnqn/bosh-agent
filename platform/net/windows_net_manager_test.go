@@ -41,8 +41,8 @@ type fakeMACAddressDetector struct {
 	macs map[string]string
 }
 
-func (m *fakeMACAddressDetector) DetectMacAddresses() (map[string]string, error) {
-	return m.macs, nil
+func (m *fakeMACAddressDetector) DetectMacAddresses() (map[string]string, map[string]string, error) {
+	return m.macs, map[string]string{}, nil
 }
 
 var _ = Describe("WindowsNetManager", func() {
